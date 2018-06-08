@@ -1,8 +1,7 @@
 using HttpParser
 using HttpCommon
-using Base.Test
 using Compat
-import Compat: String
+using Compat.Test
 
 FIREFOX_REQ = tuple("GET /favicon.ico HTTP/1.1\r\n",
          "Host: 0.0.0.0=5000\r\n",
@@ -108,18 +107,18 @@ function on_chunk_complete(parser)
     return 0
 end
 
-c_message_begin_cb = cfunction(on_message_begin, HttpParser.HTTP_CB...)
-c_url_cb = cfunction(on_url, HttpParser.HTTP_DATA_CB...)
-c_status_complete_cb = cfunction(on_status_complete, HttpParser.HTTP_CB...)
-c_header_field_cb = cfunction(on_header_field, HttpParser.HTTP_DATA_CB...)
-c_header_value_cb = cfunction(on_header_value, HttpParser.HTTP_DATA_CB...)
-c_headers_complete_cb = cfunction(on_headers_complete, HttpParser.HTTP_CB...)
-c_body_cb = cfunction(on_body, HttpParser.HTTP_DATA_CB...)
-c_message_complete_cb = cfunction(on_message_complete, HttpParser.HTTP_CB...)
-c_body_cb = cfunction(on_body, HttpParser.HTTP_DATA_CB...)
-c_message_complete_cb = cfunction(on_message_complete, HttpParser.HTTP_CB...)
-c_chunk_header_cb = cfunction(on_chunk_header, HttpParser.HTTP_CB...)
-c_chunk_complete_cb = cfunction(on_chunk_complete, HttpParser.HTTP_CB...)
+(cb_return,   cb_args)   = HttpParser.HTTP_CB
+(data_return, data_args) = HttpParser.HTTP_DATA_CB
+c_message_begin_cb    = Compat.@cfunction on_message_begin    cb_return   (cb_args...,)
+c_url_cb              = Compat.@cfunction on_url              data_return (data_args...,)
+c_status_complete_cb  = Compat.@cfunction on_status_complete  cb_return   (cb_args...,)
+c_header_field_cb     = Compat.@cfunction on_header_field     data_return (data_args...,)
+c_header_value_cb     = Compat.@cfunction on_header_value     data_return (data_args...,)
+c_headers_complete_cb = Compat.@cfunction on_headers_complete cb_return   (cb_args...,)
+c_body_cb             = Compat.@cfunction on_body             data_return (data_args...,)
+c_message_complete_cb = Compat.@cfunction on_message_complete cb_return   (cb_args...,)
+c_chunk_header_cb     = Compat.@cfunction on_chunk_header     cb_return   (cb_args...,)
+c_chunk_complete_cb   = Compat.@cfunction on_chunk_complete   cb_return   (cb_args...,)
 
 function init(test::Tuple)
     # reset request
@@ -127,7 +126,7 @@ function init(test::Tuple)
     r.method = ""
     r.resource = ""
     r.headers = Dict{AbstractString, AbstractString}()
-    r.data = ""
+    r.data = Vector{UInt8}()
     parser = Parser()
     http_parser_init(parser)
     settings = ParserSettings(c_message_begin_cb, c_url_cb,
@@ -225,4 +224,4 @@ HttpParser.resume(p)
 ex = HttpParser.HttpParserError(0x1f)
 @test ex.errno == 0x1f
 
-info("All assertions passed!")
+Compat.@info("All assertions passed!")
