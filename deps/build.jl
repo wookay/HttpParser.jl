@@ -4,7 +4,7 @@ using Compat.Libdl
 
 @BinDeps.setup
 
-version=v"2.7.1"
+version=v"2.8.1"
 
 aliases = []
 if is_windows()
@@ -34,26 +34,17 @@ if is_unix()
     src_url = "https://github.com/nodejs/http-parser/archive/$src_arch"
     src_dir = "http-parser-$version"
 
-    target = "libhttp_parser.$(Libdl.dlext)"
-    targetdwlfile = joinpath(BinDeps.downloadsdir(libhttp_parser),src_arch)
-    targetsrcdir = joinpath(BinDeps.srcdir(libhttp_parser),src_dir)
-    targetlib    = joinpath(BinDeps.libdir(libhttp_parser),target)
-
-    patchfile = joinpath(BinDeps.depsdir(libhttp_parser), "patches", "pull-357.patch")
-    if version == v"2.7.1" && !isfile(joinpath(targetsrcdir, "http_parser.c.orig"))
-        PatchStep = (@build_steps begin
-            pipeline(`cat $patchfile`, `patch --verbose -b -p1 -d $targetsrcdir`)
-        end)
-    else
-        PatchStep = (@build_steps begin end)
-    end
+    pretarget = "libhttp_parser.$(Libdl.dlext)"
+    target = Compat.Sys.islinux() ? "$pretarget.$version" : "libhttp_parser.$version.$(Libdl.dlext)"
+    targetdwlfile = joinpath(BinDeps.downloadsdir(libhttp_parser), src_arch)
+    targetsrcdir  = joinpath(BinDeps.srcdir(libhttp_parser), src_dir)
+    targetlib     = joinpath(BinDeps.libdir(libhttp_parser), pretarget)
 
     provides(SimpleBuild,
         (@build_steps begin
             CreateDirectory(BinDeps.downloadsdir(libhttp_parser))
             FileDownloader(src_url, targetdwlfile)
             FileUnpacker(targetdwlfile,BinDeps.srcdir(libhttp_parser),targetsrcdir)
-            PatchStep
             @build_steps begin
                 CreateDirectory(BinDeps.libdir(libhttp_parser))
                 @build_steps begin
@@ -62,7 +53,7 @@ if is_unix()
                     FileRule(targetlib, @build_steps begin
                         ChangeDirectory(BinDeps.srcdir(libhttp_parser))
                         CreateDirectory(dirname(targetlib))
-                        MakeTargets(["-C",src_dir,"library"], env=Dict("SONAME"=>target))
+                        MakeTargets(["-C",src_dir,"library"], env=Dict("SONAME"=>pretarget))
                         `cp $src_dir/$target $targetlib`
                     end)
                 end
@@ -73,7 +64,7 @@ end
 # Windows
 if is_windows()
     provides(Binaries,
-         URI("https://s3.amazonaws.com/julialang/bin/winnt/extras/libhttp_parser_2_7_1.zip"),
+         URI("https://s3.amazonaws.com/julialang/bin/winnt/extras/libhttp_parser_2_8_1.zip"),
          libhttp_parser, os = :Windows)
 end
 
